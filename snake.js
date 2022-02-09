@@ -1,5 +1,35 @@
 let gridx 
 window.addEventListener('DOMContentLoaded', (event) => {
+
+
+    function getRandomColor() { // random color
+        var letters = '0123456789ABCDEF';
+        var color = '#';
+        for (var i = 0; i < 2; i++) {
+            color += letters[(Math.floor(Math.random() * 5) + 12)];
+        }
+        for (var i = 0; i < 2; i++) {
+            color += letters[(Math.floor(Math.random() * 8) + 6)];
+        }
+        color += '00'
+        return color;
+    }
+    var endPoint;
+    let mode = "endPoint"
+
+    //any point in 2D space
+    class Vec2 {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    endPoint = new Vec2(400, 400);
+
+
+
+
     let canvas
     let canvas_context
     let keysPressed = {}
@@ -16,7 +46,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         window.setInterval(function () {
             // player.health = 1
             main()
-        }, 1)
+        }, 130)
         document.addEventListener('keydown', (event) => {
             keysPressed[event.key] = true;
         });
@@ -53,6 +83,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         constructor(x, y, width, height, color, fill = 1, stroke = 0, strokeWidth = 1) {
             this.x = x
             this.y = y
+            this.secret = getRandomColor()
             this.height = height
             this.width = width
             this.color = color
@@ -67,6 +98,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             this.walkable = true
             this.occupied = false
             this.closed = false
+            // this.weight = 1
 
     // //////console.log(astar)
             this.pather = astar
@@ -95,6 +127,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             return (getDistance(this, startPointPosition));
         }
         getCost(fromNeighbor) {
+            this.weight = 1
             // Take diagonal weight into consideration.
             if (fromNeighbor && fromNeighbor.x != this.x && fromNeighbor.y != this.y) {
                 return this.weight * 1.41421;
@@ -102,20 +135,40 @@ window.addEventListener('DOMContentLoaded', (event) => {
             return this.weight;
         }
         isWall(){
-            if(this.tail > 0){
-                return true
-            }else{
+            if(this.tail > 1){
                 return false
+            }else{
+                return true
             }
         }
         draw() {
-            if(this.tail > 0){
-                this.color = `rgba(${255-(this.tail*8)},${this.tail*8},${this.tail*this.tail})`
-                canvas_context.fillStyle = this.color
-                canvas_context.strokeStyle = this.color
+            if(this.t == 0){
+                this.tail = 100
+            }
+            if(this.k == 0){
+                this.tail = 100
+            }
+            if(this.k == gridx.grid.length-1){
+                this.tail = 100
+            }
+            if(this.t == gridx.grid.length-1){
+                this.tail = 100
+            }
+            // if(this.tail > 0 || this.head > 0){
+            //     this.color = `rgba(${255-(this.tail*8)},${this.tail*8},${this.tail*this.tail})`
+            //     // canvas_context.fillStyle = this.color
+            //     // canvas_context.strokeStyle = this.color
+            // }else{
+            // // canvas_context.fillStyle = this.color+"81"
+            // // canvas_context.strokeStyle = this.color+"81"
+            // }
+            if(this.tail > 0 || this.head > 0){
+                canvas_context.fillStyle =`rgba(${255-(this.tail*4)},${this.tail*8},${Math.sqrt(this.tail*333)})`
+            }else  if(this.food){
+                canvas_context.fillStyle =`rgba(${255-(this.food*255)},${this.food*255},${0})`
             }else{
-            canvas_context.fillStyle = this.color+"81"
-            canvas_context.strokeStyle = this.color+"81"
+                canvas_context.fillStyle = "black"
+
             }
             canvas_context.lineWidth = .5
             canvas_context.fillRect(this.x, this.y, this.width, this.height)
@@ -157,7 +210,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             for(let t = 0;t<size;t++){
                 this.column = []
                 for(let k = 0;k<size;k++){
-                    let rectangle = new Rectangle(t*20, k*20, 20,20, "#000000")
+                    let rectangle = new Rectangle(10+(t*5), 10+(k*5), 5,5, "#000000")
                     rectangle.t = t
                     rectangle.k = k
                     this.column.push(rectangle)
@@ -168,15 +221,16 @@ window.addEventListener('DOMContentLoaded', (event) => {
             this.xdir = 0
             this.ydir = 0
             this.grid[Math.floor(size*.9)][Math.floor(size*.9)].food = 1
-            this.length = 0
+            this.length = 100
             this.diagonal = false
             this.food = this.grid[Math.floor(size*.9)][Math.floor(size*.9)]
             this.head =  this.grid[Math.floor(size*.5)][Math.floor(size*.5)]
             this.path = []
             this.dirtyNodes = []
+            this.width = canvas.width
+            this.height = canvas.height
             this.createGrid()
-
-            this.head.pather.search(this, this.head, this.food)
+            // this.head.pather.search(this, this.head, this.food)
         }
         crash(){
             this.length = 3
@@ -257,15 +311,17 @@ window.addEventListener('DOMContentLoaded', (event) => {
             return ret;
         }
         createGrid() {
-            let NODESIZE = 20
+            let NODESIZE = 5
             var tempNode;
             var countNodes = 0;
+            let gridPointsByPos = []
+            this.gridPoints = []
             for (var i = 0; i < this.width; i += NODESIZE) {
                 gridPointsByPos[i] = [];
                 for (var j = 0; j < this.height; j += NODESIZE) {
                     gridPointsByPos[i][j] = countNodes;
-                    tempNode = new Rectangle(i, j, 20, 20, "tan", countNodes, NODESIZE, i, j, true);
-                    tempNode.F = tempNode.getValueF();
+                    tempNode = new Rectangle(i, j, 5, 5, "tan", countNodes, NODESIZE, i, j, true);
+                    tempNode.f = tempNode.getValueF();
                     this.gridPoints.push(tempNode);
                     countNodes++;
                 }
@@ -274,129 +330,156 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
         draw(){
             // //console.log(this.path)
-            // if(this.path.length > 0){
-            //     if(this.path[1].t > this.head.t){
-            //         if(this.xdir != -1){
-            //         this.ydir = 0
-            //         this.xdir = 1
-            //     }else{
-            //         this.ydir =  Math.sign(Math.random()-.5)
-            //         this.xdir =  0
-            //     }
-            //     }else if(this.path[1].k > this.head.k){
-            //         if(this.ydir != -1){
-            //         this.ydir = 1
-            //         this.xdir = 0
-            //     }else{
-            //         this.ydir = 0
-            //         this.xdir =  Math.sign(Math.random()-.5)
-            //     }
-            //     }else if(this.path[1].t < this.head.t){
-            //         if(this.xdir != 1){
-            //         this.ydir = 0
-            //         this.xdir = -1
-            //     }else{
-            //         this.ydir =  Math.sign(Math.random()-.5)
-            //         this.xdir =  0
-            //     }
-            //     }else if(this.path[1].k < this.head.k){
-            //             if(this.ydir != 1){
-            //                 this.ydir = -1
-            //                 this.xdir = 0
-            //             }else{
-            //                 this.ydir = 0
-            //                 this.xdir =  Math.sign(Math.random()-.5)
-            //             }
-            //     }
-            // }
-            if(this.path.length > 1 && this.head){
-            this.xdir = -Math.sign(this.head.t-this.path[1].t)
-            this.ydir = -Math.sign(this.head.k-this.path[1].k)
-            // if(this.head.t+this.xdir >= this.grid.length){
-            //     this.ydir = -Math.sign(this.head.k-this.path[1].k)
-            //     this.xdir = 0
-            // }else if(this.head.t+this.xdir < 0){
-            //     this.ydir = 0
-            //     this.xdir = -Math.sign(this.head.t-this.path[1].t)
-            // }else if(this.head.k+this.ydir >= this.grid.length){
-            //     this.ydir = 0
-            //     this.xdir = -Math.sign(this.head.t-this.path[1].t)
-            // }else if(this.head.k+this.ydir < 0){
-            //     this.ydir = -Math.sign(this.head.k-this.path[1].k)
-            //     this.xdir = 0
-            // }else if(this.grid[this.head.t+this.xdir][this.head.k+this.ydir].tail >= 1){
-                let j = 0
-                while(this.head.t+this.xdir >= this.grid.length    ||    this.head.t+this.xdir < 0   ||   this.head.k+this.ydir >= this.grid.length  ||  this.head.k+this.ydir < 0 ){
-                    j++
-                    if(j > 1000){
-                        break
-                    }
-                    this.ydir = Math.sign(Math.random()-.5)
-                    this.xdir = Math.sign(Math.random()-.5)
-
-                    this.path = []
-                    this.head.pather.search(this, this.head, this.food)
+            if(this.path.length > 1){
+                if(this.path[1].t > this.head.t){
+                    if(this.xdir != -1){
+                    this.ydir = 0
+                    this.xdir = 1
+                }else{
+                    this.ydir =  Math.sign(Math.random()-.5)
+                    this.xdir =  0
                 }
-
-                if(this.grid[this.head.t+this.xdir] ){
-                    let j = 0
-                    while(this.grid[this.head.t+this.xdir][this.head.k+this.ydir].tail >= 1){
-                        j++
-                        if(j > 1000){
-                            break
+                }else if(this.path[1].k > this.head.k){
+                    if(this.ydir != -1){
+                    this.ydir = 1
+                    this.xdir = 0
+                }else{
+                    this.ydir = 0
+                    this.xdir =  Math.sign(Math.random()-.5)
+                }
+                }else if(this.path[1].t < this.head.t){
+                    if(this.xdir != 1){
+                    this.ydir = 0
+                    this.xdir = -1
+                }else{
+                    this.ydir =  Math.sign(Math.random()-.5)
+                    this.xdir =  0
+                }
+                }else if(this.path[1].k < this.head.k){
+                        if(this.ydir != 1){
+                            this.ydir = -1
+                            this.xdir = 0
+                        }else{
+                            this.ydir = 0
+                            this.xdir =  Math.sign(Math.random()-.5)
                         }
-                        this.ydir = Math.sign(Math.random()-.5)
-                        this.xdir = Math.sign(Math.random()-.5)
-    
-                        this.path = []
-                        this.head.pather.search(this, this.head, this.food)
-                    }
                 }
-            // }else{
-
             }
+            // if(this.path.length > 1 && this.head){
+            // // //this.xdir = -Math.sign(this.head.t-this.path[1].t)
+            // // this.ydir = -Math.sign(this.head.k-this.path[1].k)
+            // // if(this.head.t+this.xdir >= this.grid.length){
+            // //     this.ydir = -Math.sign(this.head.k-this.path[1].k)
+            // //     //this.xdir = 0
+            // // }else if(this.head.t+this.xdir < 0){
+            // //     this.ydir = 0
+            // //     //this.xdir = -Math.sign(this.head.t-this.path[1].t)
+            // // }else if(this.head.k+this.ydir >= this.grid.length){
+            // //     this.ydir = 0
+            // //     //this.xdir = -Math.sign(this.head.t-this.path[1].t)
+            // // }else if(this.head.k+this.ydir < 0){
+            // //     this.ydir = -Math.sign(this.head.k-this.path[1].k)
+            // //     this.xdir = 0
+            // // }
+            // // }else if(this.grid[this.head.t+this.xdir][this.head.k+this.ydir].tail >= 1){
+            //     let j = 0
+            //     while(this.head.t+this.xdir >= this.grid.length    ||    this.head.t+this.xdir < 0   ||   this.head.k+this.ydir >= this.grid.length  ||  this.head.k+this.ydir < 0 ){
+            //         j++
+            //         if(j > 1000){
+            //             break
+            //         }
+            //         // this.ydir = Math.sign(Math.random()-.5)
+            //         // this.xdir = Math.sign(Math.random()-.5)
+
+            //         //this.path = []
+            //         // this.head.pather.search(this, this.head, this.food)
+            //     }
+
+            //     if(this.grid[this.head.t+this.xdir] ){
+            //         let j = 0
+            //         while(this.grid[this.head.t+this.xdir][this.head.k+this.ydir].tail >= 1){
+            //             j++
+            //             if(j > 1000){
+            //                 break
+            //             }
+            //             // this.ydir = Math.sign(Math.random()-.5)
+            //             // this.xdir = Math.sign(Math.random()-.5)
+    
+            //             //this.path = []
+            //             // this.head.pather.search(this, this.head, this.food)
+            //         }
+            //     }
+            // // }else{
+
+            // }
             let j = 0
-            while(this.head.t+this.xdir >= this.grid.length    ||    this.head.t+this.xdir < 0   ||   this.head.k+this.ydir >= this.grid.length  ||  this.head.k+this.ydir < 0 ){
+            while(this.head.t+this.xdir >= this.grid.length-1    ||    this.head.t+this.xdir < 1   ||   this.head.k+this.ydir >= this.grid.length-1  ||  this.head.k+this.ydir < 1 ){
                 j++
                 if(j > 1000){
                     break
                 }
                 if(Math.random()<.5){
-                    this.ydir = Math.sign(Math.random()-.5)
-                    this.xdir = 0
+                    // this.ydir = Math.sign(Math.random()-.5)
+                    // this.xdir = 0
                 }else{
-                    this.ydir = 0
-                    this.xdir = Math.sign(Math.random()-.5)
+                    // this.ydir = 0
+                    // this.xdir = Math.sign(Math.random()-.5)
                 }
 
-                this.path = []
-                this.head.pather.search(this, this.head, this.food)
+                //this.path = []
+                // this.head.pather.search(this, this.head, this.food)
             }
 
-            if(Math.random()<.01){
+            if(Math.random()<1){
                 this.path = []
                 this.head.pather.search(this, this.head, this.food)
 
-            }
+                let x = Math.floor(Math.random()*(this.size-2)*1)+1
+                let y = Math.floor(Math.random()*(this.size-2)*1)+1
 
-            if(this.grid[this.head.t+this.xdir] ){
-                let j = 0
-                while(this.grid[this.head.t+this.xdir][this.head.k+this.ydir].tail >= 1){
-                    j++
-                    if(j > 1000){
-                        break
+                if(this.food.tail > 0 || this.food.head > 0){
+                    this.food.food = 0
+
+                    this.food = this.grid[x][y]
+                    // this.grid[x][y].food = 1
+
+                    this.food.food = 1
+                    while(this.food.tail > 0 || this.food.head > 0){
+                        this.food.food = 0
+    
+                        this.food = this.grid[x][y]
+                        // this.grid[x][y].food = 1
+                        this.food.food = 1
+                         x = Math.floor(Math.random()*(this.size-2)*1)+1
+                         y = Math.floor(Math.random()*(this.size-2)*1)+1
                     }
-                    if(Math.random()<.5){
-                        this.ydir = Math.sign(Math.random()-.5)
-                        this.xdir = 0
-                    }else{
-                        this.ydir = 0
-                        this.xdir = Math.sign(Math.random()-.5)
-                    }
-                    this.path = []
-                    this.head.pather.search(this, this.head, this.food)
                 }
             }
+
+            // if(this.head.t+this.xdir < this.size){
+            //     if(this.head.k+this.ydir < this.size){
+            //     let j = 0
+
+            //     // console.log(this.grid, this.head)
+            //     if(typeof this.grid[this.head.t+this.xdir][this.head.k+this.ydir] != 'undefined'){
+            //         while(this.grid[this.head.t+this.xdir][this.head.k+this.ydir].tail >= 1){
+            //             j++
+            //             if(j > 1000){
+            //                 break
+            //             }
+            //             if(Math.random()<.5){
+            //                 // this.ydir = Math.sign(Math.random()-.5)
+            //                 // this.xdir = 0
+            //             }else{
+            //                 // this.ydir = 0
+            //                 // this.xdir = Math.sign(Math.random()-.5)
+            //             }
+            //             //this.path = []
+            //             // this.head.pather.search(this, this.head, this.food)
+            //         }
+            //     }
+            // }
+            // }
             ////console.log(this.path)
             // if(keysPressed['w']){
             //     if(this.ydir != 1){
@@ -436,35 +519,189 @@ window.addEventListener('DOMContentLoaded', (event) => {
                     if(this.grid[t][k].head == 1 &&  this.headmove == 0){
                         this.headmove = 1
                         this.grid[t][k].color = "#FF0000"
+                        let j = 0
+
+                        while(this.head.t+this.xdir >= this.grid.length-1    ||    this.head.t+this.xdir < 1   ||   this.head.k+this.ydir >= this.grid.length-1  ||  this.head.k+this.ydir < 1 ){
+                            if(j > 100000){
+                                break
+                            }
+                            j++
+                                if(Math.random()<.5){
+                                    this.ydir = Math.sign(Math.random()-.5)
+                                    this.xdir = 0
+                                }else{
+                                    this.ydir = 0
+                                    this.xdir = Math.sign(Math.random()-.5)
+                                }
+                        }
+                         j = 0
+                         let q = 0
+
+                        while(this.grid[t+this.xdir][k+this.ydir].tail > 1){
+                            if(j > 100000){
+                                break
+                            }
+                            j++
+                            let q = 0
+                            if(Math.random()<.5){
+                                this.ydir = Math.sign(Math.random()-.5)
+                                this.xdir = 0
+                            }else{
+                                this.ydir = 0
+                                this.xdir = Math.sign(Math.random()-.5)
+                            }
+                            while(this.head.t+this.xdir >= this.grid.length-1    ||    this.head.t+this.xdir < 1   ||   this.head.k+this.ydir >= this.grid.length-1  ||  this.head.k+this.ydir < 1 ){
+                                if(q > 100000){
+                                    break
+                                }
+                                q++
+                                if(Math.random()<.5){
+                                    this.ydir = Math.sign(Math.random()-.5)
+                                    this.xdir = 0
+                                }else{
+                                    this.ydir = 0
+                                    this.xdir = Math.sign(Math.random()-.5)
+                                }
+                            }
+                        }
+
+                        
+
+                         
                         if(t+this.xdir > this.grid[t].length){
-                            this.crash()
+                            console.log(this, '1')
+                            // this.crash()
                         }else if(t+this.xdir < 0){
-                            this.crash()
+                            console.log(this, '2')
+                            // this.crash()
                         }else if(k+this.ydir > this.grid[t].length){
-                            this.crash()
+                            console.log(this, '3')
+                            // this.crash()
                         }else if(k+this.ydir < 0){
-                            this.crash()
-                        }else if(this.grid[t+this.xdir][k+this.ydir].tail >= 1){
-                        this.crash()
-                        }else{
+                            console.log(this, '4')
+                            // this.crash()
+                        }else if((t <= this.grid.length && k <= this.grid.length && t >= 0 && k >= 0) ){
+                    
                             this.grid[t][k].tail = this.length
                             this.grid[t][k].head = 0
                             this.grid[t+this.xdir][k+this.ydir].head = 1
-                            this.head = this.grid[t+this.xdir][k+this.ydir]
-                            if(this.path.includes(this.head) && this.path.indexOf(this.head) > 0 ){
-                                this.path.splice((this.path.indexOf(this.head)),1)
+                            if(this.grid[t+this.xdir][k+this.ydir].tail > 1){
+                                this.crash()
+                            }else{
+                                this.head = this.grid[t+this.xdir][k+this.ydir]
+                                if(this.path.includes(this.head) && this.path.indexOf(this.head) > 0 ){
+                                    this.path.splice((this.path.indexOf(this.head)),1)
+                                }
+                            }
+                            if(this.food.tail > 0 || this.food.head > 0){
+                                this.length++
+                                this.grid[t+this.xdir][k+this.ydir].ate=1
+                                this.grid[t+this.xdir][k+this.ydir].food=0
+                                let x = Math.floor(Math.random()*(this.size-2)*1)+1
+                                let y = Math.floor(Math.random()*(this.size-2)*1)+1
+
+                                this.food.food = 0
+                                this.food = this.grid[x][y]
+                                this.grid[x][y].food = 1
+                                while(this.food.tail > 0 || this.food.head > 0){
+                                    this.food.food = 0
+                                    this.food = this.grid[x][y]
+                                    this.grid[x][y].food = 1
+                                     x = Math.floor(Math.random()*(this.size-2)*1)+1
+                                     y = Math.floor(Math.random()*(this.size-2)*1)+1
+                                }
+                                //this.path = []
+                                // this.head.pather.search(this, this.head, this.food)
+                            }
+                        }else{
+
+                            let j = 0
+
+                            while(this.head.t+this.xdir >= this.grid.length-1    ||    this.head.t+this.xdir < 0  ||   this.head.k+this.ydir >= this.grid.length-1  ||  this.head.k+this.ydir < 0 ){
+                                if(j > 100000){
+                                    break
+                                }
+                                j++
+                                    if(Math.random()<.5){
+                                        this.ydir = Math.sign(Math.random()-.5)
+                                        this.xdir = 0
+                                    }else{
+                                        this.ydir = 0
+                                        this.xdir = Math.sign(Math.random()-.5)
+                                    }
+                            }
+                             j = 0
+                             let q = 0
+    
+                            while(this.grid[t+this.xdir][k+this.ydir].tail > 1){
+                                if(j > 100000){
+                                    break
+                                }
+                                j++
+                                let q = 0
+                                if(Math.random()<.5){
+                                    this.ydir = Math.sign(Math.random()-.5)
+                                    this.xdir = 0
+                                }else{
+                                    this.ydir = 0
+                                    this.xdir = Math.sign(Math.random()-.5)
+                                }
+                                while(this.head.t+this.xdir >= this.grid.length-1    ||    this.head.t+this.xdir < 0  ||   this.head.k+this.ydir >= this.grid.length-1  ||  this.head.k+this.ydir < 0 ){
+                                    if(q > 100000){
+                                        break
+                                    }
+                                    q++
+                                    if(Math.random()<.5){
+                                        this.ydir = Math.sign(Math.random()-.5)
+                                        this.xdir = 0
+                                    }else{
+                                        this.ydir = 0
+                                        this.xdir = Math.sign(Math.random()-.5)
+                                    }
+                                }
+                            }
+    
+                            
+
+                            this.grid[t][k].tail = this.length
+                            this.grid[t][k].head = 0
+                            this.grid[t+this.xdir][k+this.ydir].head = 1
+                            if(this.grid[t+this.xdir][k+this.ydir].tail > 1){
+                                this.crash()
+                            }else{
+                                this.head = this.grid[t+this.xdir][k+this.ydir]
+                                if(this.path.includes(this.head) && this.path.indexOf(this.head) > 0 ){
+                                    this.path.splice((this.path.indexOf(this.head)),1)
+                                }
                             }
                             if(this.grid[t+this.xdir][k+this.ydir].food == 1){
                                 this.length++
                                 this.grid[t+this.xdir][k+this.ydir].ate=1
                                 this.grid[t+this.xdir][k+this.ydir].food=0
-                                let x = Math.floor(Math.random()*this.size*1)
-                                let y = Math.floor(Math.random()*this.size*1)
+                                let x = Math.floor(Math.random()*(this.size-2)*1)+1
+                                let y = Math.floor(Math.random()*(this.size-2)*1)+1
+
+                                this.food.food = 0
                                 this.food = this.grid[x][y]
                                 this.grid[x][y].food = 1
-                                this.path = []
-                                this.head.pather.search(this, this.head, this.food)
+                                while(this.grid[x][y].tail > 0 ){
+
+                                    this.food.food = 0
+                                    this.food = this.grid[x][y]
+                                    this.grid[x][y].food = 1
+                                     x = Math.floor(Math.random()*(this.size-2)*1)+1
+                                     y = Math.floor(Math.random()*(this.size-2)*1)+1
+                                }
+                                //this.path = []
+                                // this.head.pather.search(this, this.head, this.food)
                             }
+                            console.log(this, '5')
+                            // if(this.grid[t+this.xdir][k+this.ydir].tail >= 1){
+                                // this.crash()
+                            // }
+
+
+                                
                         }
 
 
@@ -510,19 +747,85 @@ window.addEventListener('DOMContentLoaded', (event) => {
                         }
                     }
                     // if(this.path.includes(this.grid[t][k])){
-                        // this.grid[t][k].color = "red"
+                    //     this.grid[t][k].color = "red"
+                    // }else{
+
+                    //     this.grid[t][k].color = "black"
                     // }
-                    this.grid[t][k].draw()
+                    this.grid[t][k].food = 0
+                    if(this.grid[t][k].tail > 0){
+
+                        if(this.grid[t][k] == this.food){
+                        let x = Math.floor(Math.random()*(this.size-2)*1)+1
+                        let y = Math.floor(Math.random()*(this.size-2)*1)+1
+
+                        this.food.food = 0
+                        this.food = this.grid[x][y]
+                        this.grid[x][y].food = 1
+                        while(this.food.tail > 0 || this.food.head > 0){
+
+                            this.food.food = 0
+                            this.food = this.grid[x][y]
+                            this.grid[x][y].food = 1
+                             x = Math.floor(Math.random()*(this.size-2)*1)+1
+                             y = Math.floor(Math.random()*(this.size-2)*1)+1
+                        }
+                    }
+
+                    if(this.grid[t][k] == this.food){
+                        this.grid[t][k].food = 1
+                        this.grid[t][k].tail = 0
+                    }else{
+                        this.grid[t][k].food = 0
+                    }
+                    }else{
+
+                        if(this.grid[t][k] == this.food){
+                            this.grid[t][k].food = 1
+                            this.grid[t][k].tail = 0
+                        }else{
+                            this.grid[t][k].food = 0
+                        }
+                    }
+                }
+            }
+
+            for(let t = 0;t<this.grid.length;t++){
+                for(let k = 0;k<this.grid.length;k++){
+                this.grid[t][k].draw()
                 }
             }
         }
     }
 
     let gridx = new Grid(40)
+    let globalx = 0
 
     function main(){
         canvas_context.clearRect(0,0,800,800)
         gridx.draw()
+
+        globalx++
+        let img2 = new Image();
+        img2.src = canvas.toDataURL("image/png");
+        // document.body.appendChild(img2);
+        let link = document.createElement("a");
+        link.download = `selfo${globalx}.png`
+        canvas.toBlob(function(blob) {
+          link.href = URL.createObjectURL(blob);
+            link.click();
+        }, "image/png");
     }
 
+    function getDistance(nodeA, nodeB) {
+        // return distancetable[`${nodeA.x},${nodeB.y},${nodeA.x},${nodeB.y}`]
+        var distX = Math.abs(nodeA.x - nodeB.x);
+        var distY = Math.abs(nodeA.y - nodeB.y);
+
+        if (distX > distY) {
+            return ((1.4 * distY) + ((distX - distY)))
+
+        }
+        return (1.4 * distX + ((distY - distX)));
+    }
 })
